@@ -35,10 +35,8 @@
 #include "lastexpress/menu/menu.h"
 
 #include "lastexpress/sound/queue.h"
-#include "lastexpress/sound/sound.h"
 
 #include "lastexpress/graphics.h"
-#include "lastexpress/helpers.h"
 #include "lastexpress/lastexpress.h"
 #include "lastexpress/resource.h"
 
@@ -46,7 +44,7 @@
 namespace LastExpress {
 
 Inventory::Inventory(LastExpressEngine *engine) : _engine(engine), _selectedItem(kItemNone), _highlightedItemIndex(0), _itemsShown(0),
-	_showingHourGlass(false), _blinkingDirection(1), _blinkingBrightness(0),
+	/*_showingHourGlass(false), */ _blinkingDirection(1), _blinkingBrightness(0),
 	_useMagnifier(false), _portraitHighlighted(false), _isOpened(false), _eggHightlighted(false), _itemScene(NULL) {
 
 	//_inventoryRect = Common::Rect(0, 0, 32, 32);
@@ -621,7 +619,7 @@ void Inventory::drawEgg() const {
 
 // Blinking egg: we need to blink the egg for delta time, with the blinking getting faster until it's always lit.
 void Inventory::drawBlinkingEgg(uint ticks) {
-	uint globalTimer = getGlobalTimer();
+	uint globalTimer = (uint)getGlobalTimer();
 	uint timerValue = (getProgress().jacket == kJacketGreen) ? 450 : 225;
 
 	if (globalTimer == timerValue || globalTimer == 900) {
@@ -655,7 +653,7 @@ void Inventory::drawBlinkingEgg(uint ticks) {
 }
 
 void Inventory::blinkEgg() {
-	drawItem((CursorStyle)(getMenu()->getGameId() + 39), 608, 448, (_blinkingBrightness == 0) ? -1 : _blinkingBrightness);
+	drawItem((CursorStyle)(getMenu()->getGameId() + 39), 608, 448, (_blinkingBrightness == 0) ? -1 : (int16)_blinkingBrightness);
 
 	askForRedraw();
 

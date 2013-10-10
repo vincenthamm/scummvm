@@ -87,7 +87,8 @@ enum ADGameFlags {
 	ADGF_ADDENGLISH = (1 << 24), ///< always add English as language option
 	ADGF_MACRESFORK = (1 << 25), ///< the md5 for this entry will be calculated from the resource fork
 	ADGF_USEEXTRAASTITLE = (1 << 26), ///< Extra field value will be used as main game title, not gameid
-	ADGF_DROPLANGUAGE = (1 << 28), ///< don't add language to gameid
+	ADGF_DROPLANGUAGE = (1 << 27), ///< don't add language to gameid
+	ADGF_DROPPLATFORM = (1 << 28), ///< don't add platform to gameid
 	ADGF_CD = (1 << 29),    	///< add "-cd" to gameid
 	ADGF_DEMO = (1 << 30)   	///< add "-demo" to gameid
 };
@@ -194,7 +195,7 @@ protected:
 
 	/**
 	 * A map containing all the extra game GUI options the engine supports.
-	 */ 
+	 */
 	const ADExtraGuiOptionsMap * const _extraGuiOptions;
 
 	/**
@@ -212,7 +213,7 @@ protected:
 	 *
 	 * Used to override gameid.
 	 * This is a recommended setting to prevent global gameid pollution.
-	 * With this option set, the gameid effectively turns into engineid. 
+	 * With this option set, the gameid effectively turns into engineid.
 	 *
 	 * FIXME: This field actually removes a feature (gameid) in order to
 	 * address a more generic problem. We should find a better way to
@@ -279,6 +280,9 @@ protected:
 	virtual const ADGameDescription *fallbackDetect(const FileMap &allFiles, const Common::FSList &fslist) const {
 		return 0;
 	}
+
+private:
+	void initSubSystems(const ADGameDescription *gameDesc) const;
 
 protected:
 	/**

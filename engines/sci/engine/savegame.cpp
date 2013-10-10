@@ -600,7 +600,10 @@ void MusicEntry::saveLoadWithSerializer(Common::Serializer &s) {
 	s.syncAsSint16LE(dataInc);
 	s.syncAsSint16LE(ticker);
 	s.syncAsSint16LE(signal, VER(17));
-	s.syncAsByte(priority);
+	if (s.getVersion() >= 31) // FE sound/music.h -> priority
+		s.syncAsSint16LE(priority);
+	else
+		s.syncAsByte(priority);
 	s.syncAsSint16LE(loop, VER(17));
 	s.syncAsByte(volume);
 	s.syncAsByte(hold, VER(17));
@@ -678,7 +681,7 @@ void GfxPalette::saveLoadWithSerializer(Common::Serializer &s) {
 		// We need to save intensity of the _sysPalette at least for kq6 when entering the dark cave (room 390)
 		//  from room 340. scripts will set intensity to 60 for this room and restore them when leaving.
 		//  Sierra SCI is also doing this (although obviously not for SCI0->SCI01 games, still it doesn't hurt
-		//  to save it everywhere). ffs. bug #3072868
+		//  to save it everywhere). Refer to bug #3072868
 		s.syncBytes(_sysPalette.intensity, 256);
 	}
 	if (s.getVersion() >= 24) {
@@ -696,8 +699,9 @@ void GfxPalette::saveLoadWithSerializer(Common::Serializer &s) {
 			s.syncAsSint32LE(_palVaryPaused);
 		}
 
+		_palVarySignal = 0;
+
 		if (s.isLoading() && _palVaryResourceId != -1) {
-			_palVarySignal = 0;
 			palVaryInstallTimer();
 		}
 	}

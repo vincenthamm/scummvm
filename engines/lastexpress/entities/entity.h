@@ -25,13 +25,8 @@
 
 #include "lastexpress/shared.h"
 
-#include "lastexpress/game/logic.h"
-#include "lastexpress/game/savepoint.h"
-#include "lastexpress/game/state.h"
-
 #include "lastexpress/sound/sound.h"
 
-#include "lastexpress/lastexpress.h"
 #include "lastexpress/helpers.h"
 
 #include "common/array.h"
@@ -335,7 +330,7 @@ public:
 	};
 
 	struct EntityParametersSIII : EntityParameters {
-		char seq[12];
+		char seq[13];
 		uint param4;
 		uint param5;
 		uint param6;
@@ -343,7 +338,7 @@ public:
 		uint param8;
 
 		EntityParametersSIII() {
-			memset(&seq, 0, 12);
+			memset(&seq, 0, 13);
 			param4 = 0;
 			param5 = 0;
 			param6 = 0;
@@ -379,16 +374,16 @@ public:
 	};
 
 	struct EntityParametersSIIS : EntityParameters {
-		char seq1[12];
+		char seq1[13];
 		uint param4;
 		uint param5;
-		char seq2[12];
+		char seq2[13];
 
 		EntityParametersSIIS() {
-			memset(&seq1, 0, 12);
+			memset(&seq1, 0, 13);
 			param4 = 0;
 			param5 = 0;
-			memset(&seq2, 0, 12);
+			memset(&seq2, 0, 13);
 		}
 
 		Common::String toString() {
@@ -415,14 +410,14 @@ public:
 
 	struct EntityParametersISSI : EntityParameters {
 		uint param1;
-		char seq1[12];
-		char seq2[12];
+		char seq1[13];
+		char seq2[13];
 		uint param8;
 
 		EntityParametersISSI() {
 			param1 = 0;
-			memset(&seq1, 0, 12);
-			memset(&seq2, 0, 12);
+			memset(&seq1, 0, 13);
+			memset(&seq2, 0, 13);
 			param8 = 0;
 		}
 
@@ -450,7 +445,7 @@ public:
 
 	struct EntityParametersISII : EntityParameters {
 		uint param1;
-		char seq[12];
+		char seq[13];
 		uint param5;
 		uint param6;
 		uint param7;
@@ -458,7 +453,7 @@ public:
 
 		EntityParametersISII() {
 			param1 = 0;
-			memset(&seq, 0, 12);
+			memset(&seq, 0, 13);
 			param5 = 0;
 			param6 = 0;
 			param7 = 0;
@@ -493,14 +488,14 @@ public:
 	};
 
 	struct EntityParametersSSII : EntityParameters {
-		char seq1[12];
-		char seq2[12];
+		char seq1[13];
+		char seq2[13];
 		uint param7;
 		uint param8;
 
 		EntityParametersSSII() {
-			memset(&seq1, 0, 12);
-			memset(&seq2, 0, 12);
+			memset(&seq1, 0, 13);
+			memset(&seq2, 0, 13);
 			param7 = 0;
 			param8 = 0;
 		}
@@ -528,14 +523,14 @@ public:
 	};
 
 	struct EntityParametersSSS : EntityParameters {
-		char seq1[12];
-		char seq2[12];
-		char seq3[8];
+		char seq1[13];
+		char seq2[13];
+		char seq3[9];
 
 		EntityParametersSSS() {
-			memset(&seq1, 0, 12);
-			memset(&seq2, 0, 12);
-			memset(&seq3, 0, 8);
+			memset(&seq1, 0, 13);
+			memset(&seq2, 0, 13);
+			memset(&seq3, 0, 9);
 		}
 
 		Common::String toString() {
@@ -556,14 +551,14 @@ public:
 	struct EntityParametersIISS : EntityParameters {
 		uint param1;
 		uint param2;
-		char seq1[12];
-		char seq2[12];
+		char seq1[13];
+		char seq2[13];
 
 		EntityParametersIISS() {
 			param1 = 0;
 			param2 = 0;
-			memset(&seq1, 0, 12);
-			memset(&seq2, 0, 12);
+			memset(&seq1, 0, 13);
+			memset(&seq2, 0, 13);
 		}
 
 		Common::String toString() {
@@ -591,7 +586,7 @@ public:
 	struct EntityParametersIISI : EntityParameters {
 		uint param1;
 		uint param2;
-		char seq[12];
+		char seq[13];
 		uint param6;
 		uint param7;
 		uint param8;
@@ -599,7 +594,7 @@ public:
 		EntityParametersIISI() {
 			param1 = 0;
 			param2 = 0;
-			memset(&seq, 0, 12);
+			memset(&seq, 0, 13);
 			param6 = 0;
 			param7 = 0;
 			param8 = 0;
@@ -636,7 +631,7 @@ public:
 		uint param1;
 		uint param2;
 		uint param3;
-		char seq[12];
+		char seq[13];
 		uint param7;
 		uint param8;
 
@@ -644,7 +639,7 @@ public:
 			param1 = 0;
 			param2 = 0;
 			param3 = 0;
-			memset(&seq, 0, 12);
+			memset(&seq, 0, 13);
 			param7 = 0;
 			param8 = 0;
 		}
@@ -682,7 +677,7 @@ public:
 		uint param3;
 		uint param4;
 		uint param5;
-		char seq[12];
+		char seq[13];
 
 		EntityParametersI5S() {
 			param1 = 0;
@@ -690,7 +685,7 @@ public:
 			param3 = 0;
 			param4 = 0;
 			param5 = 0;
-			memset(&seq, 0, 12);
+			memset(&seq, 0, 13);
 		}
 
 		void saveLoadWithSerializer(Common::Serializer &s) {
@@ -827,7 +822,7 @@ public:
 		 * @param	string	The string.
 		 * @param	length	Length of the string.
 		 */
-		void syncString(Common::Serializer &s, Common::String &string, int length);
+		void syncString(Common::Serializer &s, Common::String &string, uint length) const;
 
 		// Serializable
 		void saveLoadWithSerializer(Common::Serializer &s);
@@ -850,8 +845,8 @@ public:
 	EntityParameters     *getCurrentParameters(byte index = 0) { return getParameters(_data.currentCall, index); }
 	EntityCallParameters *getCurrentCallParameters() { return &_parameters[_data.currentCall]; }
 
-	int                   getCallback(uint callback) const;
-	int                   getCurrentCallback() { return getCallback(_data.currentCall); }
+	byte                  getCallback(uint callback) const;
+	byte                  getCurrentCallback() { return getCallback(_data.currentCall); }
 	void                  setCallback(uint callback, byte index);
 	void                  setCurrentCallback(uint index) { setCallback(_data.currentCall, index); }
 
@@ -1089,18 +1084,18 @@ protected:
 	// Helper functions
 	//////////////////////////////////////////////////////////////////////////
 
-	bool updateParameter(uint &parameter, uint timeType, uint delta);
-	bool updateParameterCheck(uint &parameter, uint timeType, uint delta);
-	bool updateParameterTime(TimeValue timeValue, bool check, uint &parameter, uint delta);
+	bool updateParameter(uint &parameter, uint timeType, uint delta) const;
+	bool updateParameterCheck(uint &parameter, uint timeType, uint delta) const;
+	bool updateParameterTime(TimeValue timeValue, bool check, uint &parameter, uint delta) const;
 
-	bool timeCheck(TimeValue timeValue, uint &parameter, Common::Functor0<void> *function);
+	bool timeCheck(TimeValue timeValue, uint &parameter, Common::Functor0<void> *function) const;
 	bool timeCheckCallback(TimeValue timeValue, uint &parameter, byte callback, Common::Functor0<void> *function);
 	bool timeCheckCallback(TimeValue timeValue, uint &parameter, byte callback, const char *str, Common::Functor1<const char *, void> *function);
 	bool timeCheckCallback(TimeValue timeValue, uint &parameter, byte callback, bool check, Common::Functor1<bool, void> *function);
 	bool timeCheckCallbackInventory(TimeValue timeValue, uint &parameter, byte callback, Common::Functor0<void> *function);
 	bool timeCheckCar(TimeValue timeValue, uint &parameter, byte callback, Common::Functor0<void> *function);
-	void timeCheckSavepoint(TimeValue timeValue, uint &parameter, EntityIndex entity1, EntityIndex entity2, ActionIndex action);
-	void timeCheckObject(TimeValue timeValue, uint &parameter, ObjectIndex index, ObjectLocation location);
+	void timeCheckSavepoint(TimeValue timeValue, uint &parameter, EntityIndex entity1, EntityIndex entity2, ActionIndex action) const;
+	void timeCheckObject(TimeValue timeValue, uint &parameter, ObjectIndex index, ObjectLocation location) const;
 	bool timeCheckCallbackAction(TimeValue timeValue, uint &parameter);
 	bool timeCheckPlaySoundUpdatePosition(TimeValue timeValue, uint &parameter, byte callback, const char* sound, EntityPosition position);
 

@@ -25,7 +25,7 @@
 #include "kyra/text_mr.h"
 #include "kyra/resource.h"
 #include "kyra/timer.h"
-#include "kyra/sound.h"
+#include "kyra/sound_digital.h"
 
 #include "common/system.h"
 
@@ -737,7 +737,7 @@ void KyraEngine_MR::loadAlbumPageWSA() {
 	if (_album.curPage != 14) {
 		filename = Common::String::format("PAGE%x.WSA", _album.curPage+1);
 		_album.rightPage.wsa->open(filename.c_str(), 1, 0);
-		_album.rightPage.maxFrame = _album.leftPage.wsa->frames()-1;
+		_album.rightPage.maxFrame = _album.rightPage.wsa->frames()-1;
 	}
 }
 

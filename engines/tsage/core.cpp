@@ -65,6 +65,11 @@ InvObject::InvObject(int visage, int strip, int frame) {
 	_frame = frame;
 	_sceneNumber = 0;
 	_iconResNum = 10;
+
+	_displayResNum = 0;
+	_rlbNum = 0;
+	_cursorNum = 0;
+	_cursorId = INV_NONE;
 }
 
 InvObject::InvObject(int strip, int frame) {
@@ -75,6 +80,11 @@ InvObject::InvObject(int strip, int frame) {
 	_visage = 7;
 	_sceneNumber = 0;
 	_iconResNum = 10;
+
+	_displayResNum = 0;
+	_rlbNum = 0;
+	_cursorNum = 0;
+	_cursorId = INV_NONE;
 }
 
 void InvObject::setCursor() {
@@ -163,6 +173,8 @@ Action::Action() {
 	_owner = NULL;
 	_endHandler = NULL;
 	_attached = false;
+	_delayFrames = 0;
+	_startFrame = 0;
 }
 
 void Action::synchronize(Serializer &s) {
@@ -387,6 +399,8 @@ void ObjectMover::endMove() {
 
 ObjectMover2::ObjectMover2() : ObjectMover() {
 	_destObject = NULL;
+	_minArea = 0;
+	_maxArea = 0;
 }
 
 void ObjectMover2::synchronize(Serializer &s) {
@@ -1047,6 +1061,8 @@ PaletteModifier::PaletteModifier() {
 PaletteModifierCached::PaletteModifierCached(): PaletteModifier() {
 	_step = 0;
 	_percent = 0;
+	for (int i = 0; i < 768; i++)
+		_palette[i] = 0;
 }
 
 void PaletteModifierCached::setPalette(ScenePalette *palette, int step) {
@@ -1070,6 +1086,10 @@ PaletteRotation::PaletteRotation() : PaletteModifierCached() {
 	_frameNumber = g_globals->_events.getFrameNumber();
 	_idxChange = 1;
 	_countdown = 0;
+	_currIndex = 0;
+	_start = _end = 0;
+	_rotationMode = 0;
+	_duration = 0;
 }
 
 void PaletteRotation::synchronize(Serializer &s) {
@@ -1159,7 +1179,7 @@ void PaletteRotation::signal() {
 		int count = _end - _currIndex;
 		g_system->getPaletteManager()->setPalette((const byte *)&_palette[_currIndex * 3], _start, count);
 
-		if (count2) {
+		if (count2 > 0) {
 			g_system->getPaletteManager()->setPalette((const byte *)&_palette[_start * 3], _start + count, count2);
 		}
 	}
@@ -1273,6 +1293,10 @@ ScenePalette::ScenePalette() {
 	}
 
 	_field412 = 0;
+	_redColor = _greenColor = _blueColor = 0;
+	_aquaColor = 0;
+	_purpleColor = 0;
+	_limeColor = 0;
 }
 
 ScenePalette::~ScenePalette() {
@@ -1280,6 +1304,12 @@ ScenePalette::~ScenePalette() {
 }
 
 ScenePalette::ScenePalette(int paletteNum) {
+	_field412 = 0;
+	_redColor = _greenColor = _blueColor = 0;
+	_aquaColor = 0;
+	_purpleColor = 0;
+	_limeColor = 0;
+
 	loadPalette(paletteNum);
 }
 
@@ -1486,6 +1516,10 @@ void ScenePalette::changeBackground(const Rect &bounds, FadeMode fadeMode) {
 
 	g_globals->_screenSurface.copyFrom(g_globals->_sceneManager._scene->_backSurface,
 		tempRect, Rect(0, 0, tempRect.width(), tempRect.height()), NULL);
+	if (g_vm->getGameID() == GType_Ringworld2 && !GLOBALS._player._uiEnabled
+			&& T2_GLOBALS._interfaceY == UI_INTERFACE_Y) {
+		g_globals->_screenSurface.fillRect(Rect(0, UI_INTERFACE_Y, SCREEN_WIDTH, SCREEN_HEIGHT - 1), 0);
+	}
 
 	for (SynchronizedList<PaletteModifier *>::iterator i = tempPalette._listeners.begin(); i != tempPalette._listeners.end(); ++i)
 		delete *i;
@@ -1781,6 +1815,7 @@ void SceneItem::display(const Common::String &msg) {
 
 SceneHotspot::SceneHotspot(): SceneItem() {
 	_lookLineNum = _useLineNum = _talkLineNum = 0;
+	_resNum = 0;
 }
 
 void SceneHotspot::synchronize(Serializer &s) {
@@ -2031,11 +2066,18 @@ SceneObject::SceneObject() : SceneHotspot() {
 	_visage = 0;
 	_strip = 0;
 	_frame = 0;
-	_effect = 0;
-	_shade = _shade2 = 0;
+	_effect = EFFECT_NONE;
+	_shade = _oldShade = 0;
 	_linkedActor = NULL;
 
 	_field8A = Common::Point(0, 0);
+	_angle = 0;
+	_xs = 0;
+	_xe = 0;
+	_endFrame = 0;
+	_field68 = 0;
+	_regionIndex = 0;
+	_field9C = NULL;
 }
 
 SceneObject::SceneObject(const SceneObject &so) : SceneHotspot() {
@@ -2073,8 +2115,13 @@ int SceneObject::getFrameCount() {
 
 void SceneObject::animEnded() {
 	_animateMode = ANIM_MODE_NONE;
-	if (_endAction)
-		_endAction->signal();
+	if (_endAction) {
+		Action *endAction = _endAction;
+		if (g_vm->getGameID() == GType_Ringworld2)
+			_endAction = NULL;
+
+		endAction->signal();
+	}
 }
 
 int SceneObject::changeFrame() {
@@ -2323,14 +2370,20 @@ void SceneObject::animate(AnimateMode animMode, ...) {
 
 	case ANIM_MODE_8:
 	case ANIM_MODE_9:
-		_field68 = va_arg(va, int);
-		_endAction = va_arg(va, Action *);
-		_frameChange = 1;
-		_endFrame = getFrameCount();
-		if (_frame == _endFrame)
-			setFrame(getNewFrame());
+		if (_animateMode == ANIM_MODE_9 && g_vm->getGameID() == GType_Ringworld2) {
+			_frameChange = -1;
+			_field2E = _position;
+		} else {
+			_field68 = va_arg(va, int);
+			_endAction = va_arg(va, Action *);
+			_frameChange = 1;
+			_endFrame = getFrameCount();
+			if (_frame == _endFrame)
+				setFrame(getNewFrame());
+		}
 		break;
 	}
+	va_end(va);
 }
 
 SceneObject *SceneObject::clone() const {
@@ -2420,7 +2473,7 @@ void SceneObject::synchronize(Serializer &s) {
 	if (g_vm->getGameID() == GType_Ringworld2) {
 		s.syncAsSint16LE(_effect);
 		s.syncAsSint16LE(_shade);
-		s.syncAsSint16LE(_shade2);
+		s.syncAsSint16LE(_oldShade);
 		SYNC_POINTER(_linkedActor);
 	}
 }
@@ -2429,10 +2482,11 @@ void SceneObject::postInit(SceneObjectList *OwnerList) {
 	if (!OwnerList)
 		OwnerList = g_globals->_sceneObjects;
 
-	if (!OwnerList->contains(this)) {
+	bool isExisting = OwnerList->contains(this); 
+	if (!isExisting || ((_flags & OBJFLAG_REMOVE) != 0)) {
 		_percent = 100;
 		_priority = 255;
-		_flags = 4;
+		_flags = OBJFLAG_ZOOMED;
 		_visage = 0;
 		_strip = 1;
 		_frame = 1;
@@ -2448,7 +2502,8 @@ void SceneObject::postInit(SceneObjectList *OwnerList) {
 		_numFrames = 10;
 		_regionBitList = 0;
 
-		OwnerList->push_back(this);
+		if (!isExisting)
+			OwnerList->push_back(this);
 		_flags |= OBJFLAG_PANES;
 	}
 }
@@ -2466,9 +2521,9 @@ void SceneObject::remove() {
 
 void SceneObject::dispatch() {
 	if (g_vm->getGameID() == GType_Ringworld2) {
-		if (_shade != _shade2)
+		if (_shade != _oldShade)
 			_flags |= OBJFLAG_PANES;
-		_shade2 = _shade;
+		_oldShade = _shade;
 	}
 
 	uint32 currTime = g_globals->_events.getFrameNumber();
@@ -2586,8 +2641,9 @@ void SceneObject::dispatch() {
 			_linkedActor->setFrame(_frame);
 		}
 
-		if ((_effect == 1) && (getRegionIndex() < 11))
-			_shade = 0;
+		int regionIndex = getRegionIndex();
+		if ((_effect == EFFECT_SHADED) && (regionIndex < 11))
+			_shade = regionIndex;
 	}
 }
 
@@ -2616,7 +2672,24 @@ void SceneObject::removeObject() {
 
 GfxSurface SceneObject::getFrame() {
 	_visageImages.setVisage(_visage, _strip);
-	return _visageImages.getFrame(_frame);
+	GfxSurface frame = _visageImages.getFrame(_frame);
+
+	// If shading is needed, post apply the shadiing onto the frame
+	if ((g_vm->getGameID() == GType_Ringworld2) && (_shade >= 1)) {
+		Graphics::Surface s = frame.lockSurface();
+		byte *p = (byte *)s.getPixels();
+		byte *endP = p + s.w * s.h;
+		
+		while (p < endP) {
+			if (*p != frame._transColor)
+				*p = R2_GLOBALS._fadePaletteMap[_shade - 1][*p];
+			++p;
+		}
+
+		frame.unlockSurface();
+	}
+
+	return frame;
 }
 
 void SceneObject::reposition() {
@@ -2685,7 +2758,9 @@ void SceneObject::setup(int visage, int stripFrameNum, int frameNum, int posX, i
 }
 
 void SceneObject::setup(int visage, int stripFrameNum, int frameNum) {
-	postInit();
+	if (g_vm->getGameID() != GType_Ringworld2)
+		postInit();
+
 	setVisage(visage);
 	setStrip(stripFrameNum);
 	setFrame(frameNum);
@@ -2711,18 +2786,34 @@ void BackgroundSceneObject::draw() {
 	g_globals->_sceneManager._scene->_backSurface.copyFrom(frame, destRect, priorityRegion);
 }
 
-void BackgroundSceneObject::setup2(int visage, int stripFrameNum, int frameNum, int posX, int posY, int priority, int32 arg10) {
-	warning("TODO: Implement properly BackgroundSceneObject::setup2()");
+SceneObject *BackgroundSceneObject::clone() const {
+	BackgroundSceneObject *obj = new BackgroundSceneObject(*this);
+	return obj;
+}
+
+void BackgroundSceneObject::setup2(int visage, int stripFrameNum, int frameNum, int posX, int posY, int priority, int effect) {
+	// Check if the given object is already in the background object list
+	if (R2_GLOBALS._sceneManager._scene->_bgSceneObjects.contains(this)) {
+		_flags |= OBJFLAG_REMOVE;
+
+		// Clone the item
+		SceneObject *obj = clone();
+		obj->_flags |= OBJFLAG_CLONED;
+		R2_GLOBALS._sceneManager._scene->_bgSceneObjects.push_back(obj);
+
+		_flags |= ~OBJFLAG_REMOVE;
+	}
+
 	postInit();
 	setVisage(visage);
 	setStrip(stripFrameNum);
 	setFrame(frameNum);
-	setPosition(Common::Point(posX, posY), 0);
+	setPosition(Common::Point(posX, posY));
 	fixPriority(priority);
 }
 
-void BackgroundSceneObject::proc27() {
-	warning("STUB: BackgroundSceneObject::proc27()");
+void BackgroundSceneObject::copySceneToBackground() {
+	GLOBALS._sceneManager._scene->_backSurface.copyFrom(g_globals->gfxManager().getSurface(), 0, 0);
 }
 
 /*--------------------------------------------------------------------------*/
@@ -3064,6 +3155,7 @@ Visage::Visage() {
 	_rlbNum = -1;
 	_data = NULL;
 	_flipHoriz = false;
+	_flipVert = false;
 }
 
 Visage::Visage(const Visage &v) {
@@ -3072,6 +3164,8 @@ Visage::Visage(const Visage &v) {
 	_data = v._data;
 	if (_data)
 		g_vm->_memoryManager.incLocks(_data);
+	_flipHoriz = false;
+	_flipVert = false;
 }
 
 Visage &Visage::operator=(const Visage &s) {
@@ -3115,8 +3209,11 @@ void Visage::setVisage(int resNum, int rlbNum) {
 					rlbNum = (int)(v & 0xff);
 				}
 				_flipHoriz = flags & 1;
+				_flipVert = flags & 2;
 
 				_data = g_resourceManager->getResource(RES_VISAGE, resNum, rlbNum);
+
+				DEALLOCATE(indexData);
 			}
 		}
 
@@ -3139,7 +3236,9 @@ GfxSurface Visage::getFrame(int frameNum) {
 	byte *frameData = _data + offset;
 
 	GfxSurface result = surfaceFromRes(frameData);
-	if (_flipHoriz) flip(result);
+	if (_flipHoriz) flipHorizontal(result);
+	if (_flipVert) flipVertical(result);
+
 	return result;
 }
 
@@ -3147,7 +3246,7 @@ int Visage::getFrameCount() const {
 	return READ_LE_UINT16(_data);
 }
 
-void Visage::flip(GfxSurface &gfxSurface) {
+void Visage::flipHorizontal(GfxSurface &gfxSurface) {
 	Graphics::Surface s = gfxSurface.lockSurface();
 
 	for (int y = 0; y < s.h; ++y) {
@@ -3155,6 +3254,21 @@ void Visage::flip(GfxSurface &gfxSurface) {
 		byte *lineP = (byte *)s.getBasePtr(0, y);
 		for (int x = 0; x < (s.w / 2); ++x)
 			SWAP(lineP[x], lineP[s.w - x - 1]);
+	}
+
+	gfxSurface.unlockSurface();
+}
+
+void Visage::flipVertical(GfxSurface &gfxSurface) {
+	Graphics::Surface s = gfxSurface.lockSurface();
+
+	for (int y = 0; y < s.h / 2; ++y) {
+		// Flip the lines1
+		byte *line1P = (byte *)s.getBasePtr(0, y);
+		byte *line2P = (byte *)s.getBasePtr(0, s.h - y - 1);
+
+		for (int x = 0; x < s.w; ++x)
+			SWAP(line1P[x], line2P[x]);
 	}
 
 	gfxSurface.unlockSurface();
@@ -3196,8 +3310,9 @@ void Player::postInit(SceneObjectList *OwnerList) {
 	{
 		_moveDiff.x = 3;
 		_moveDiff.y = 2;
-		_effect = 1;
+		_effect = EFFECT_SHADED;
 		_shade = 0;
+		_linkedActor = NULL;
 
 		setObjectWrapper(new SceneObjectWrapper());
 		setPosition(_characterPos[_characterIndex]);
@@ -3209,20 +3324,24 @@ void Player::postInit(SceneObjectList *OwnerList) {
 
 void Player::disableControl() {
 	_canWalk = false;
-	_uiEnabled = false;
 	g_globals->_events.setCursor(CURSOR_NONE);
 	_enabled = false;
 
-	if ((g_vm->getGameID() != GType_Ringworld) && T2_GLOBALS._uiElements._active)
-		T2_GLOBALS._uiElements.hide();
+	if (g_vm->getGameID() != GType_Ringworld2) {
+		_uiEnabled = false;
+
+		if ((g_vm->getGameID() != GType_Ringworld) && T2_GLOBALS._uiElements._active)
+			T2_GLOBALS._uiElements.hide();
+	}
 }
 
 void Player::enableControl() {
 	CursorType cursor;
 
 	_canWalk = true;
-	_uiEnabled = true;
 	_enabled = true;
+	if (g_vm->getGameID() != GType_Ringworld2)
+		_uiEnabled = true;
 
 	switch (g_vm->getGameID()) {
 	case GType_BlueForce:
@@ -3230,7 +3349,7 @@ void Player::enableControl() {
 		cursor = g_globals->_events.getCursor();
 		g_globals->_events.setCursor(cursor);
 
-		if (T2_GLOBALS._uiElements._active)
+		if (g_vm->getGameID() == GType_BlueForce && T2_GLOBALS._uiElements._active)
 			T2_GLOBALS._uiElements.show();
 		break;
 
@@ -3579,6 +3698,7 @@ void SceneItemList::addItems(SceneItem *first, ...) {
 		push_back(p);
 		p = va_arg(va, SceneItem *);
 	}
+	va_end(va);
 }
 
 /*--------------------------------------------------------------------------*/
@@ -3927,7 +4047,7 @@ int WalkRegions::indexOf(const Common::Point &pt, const Common::List<int> *index
 }
 
 void WalkRegions::synchronize(Serializer &s) {
-	// Synchronise the list of disabled regions as a list of values terminated with a '-1'
+	// Synchronize the list of disabled regions as a list of values terminated with a '-1'
 	int regionId = 0;
 	if (s.isLoading()) {
 		_disabledRegions.clear();
@@ -4074,6 +4194,7 @@ SceneHandler::SceneHandler() {
 	_saveGameSlot = -1;
 	_loadGameSlot = -1;
 	_prevFrameNumber = 0;
+	_delayTicks = 0;
 }
 
 void SceneHandler::registerHandler() {
@@ -4138,11 +4259,11 @@ void SceneHandler::process(Event &event) {
 			g_vm->_debugger->onFrame();
 		}
 
-		if ((event.eventType == EVENT_KEYPRESS) && g_globals->_player._enabled && g_globals->_player._canWalk) {
+		if ((event.eventType == EVENT_KEYPRESS) && g_globals->_player._enabled) {
 			// Keyboard shortcuts for different actions
 			switch (event.kbd.keycode) {
 			case Common::KEYCODE_w:
-				g_globals->_events.setCursor(CURSOR_WALK);
+				g_globals->_events.setCursor(GLOBALS._player._canWalk ? CURSOR_WALK : CURSOR_USE);
 				event.handled = true;
 				break;
 			case Common::KEYCODE_l:
@@ -4176,9 +4297,10 @@ void SceneHandler::process(Event &event) {
 			// Scan the item list to find one the mouse is within
 			SynchronizedList<SceneItem *>::iterator i;
 			for (i = g_globals->_sceneItems.begin(); i != g_globals->_sceneItems.end(); ++i) {
-				if ((*i)->contains(event.mousePos)) {
+				SceneItem *item = *i;				
+				if (item->contains(event.mousePos)) {
 					// Pass the action to the item
-					bool handled = (*i)->startAction(g_globals->_events.getCursor(), event);
+					bool handled = item->startAction(g_globals->_events.getCursor(), event);
 					if (!handled)
 						// Item wasn't handled, keep scanning
 						continue;
@@ -4225,10 +4347,15 @@ void SceneHandler::dispatch() {
 			GUIErrorMessage(SAVE_ERROR_MSG);
 	}
 	if (_loadGameSlot != -1) {
+		int priorSceneBeforeLoad = GLOBALS._sceneManager._previousScene;
+		int currentSceneBeforeLoad = GLOBALS._sceneManager._sceneNumber;
+
 		int loadSlot = _loadGameSlot;
 		_loadGameSlot = -1;
 		g_saver->restore(loadSlot);
 		g_globals->_events.setCursorFromFlag();
+
+		postLoad(priorSceneBeforeLoad, currentSceneBeforeLoad);
 	}
 
 	g_globals->_soundManager.dispatch();

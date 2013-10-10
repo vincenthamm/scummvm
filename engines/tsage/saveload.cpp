@@ -151,8 +151,9 @@ Common::Error Saver::save(int slot, const Common::String &saveName) {
 
 	// Save each registered SaveObject descendant object into the savegame file
 	for (SynchronizedList<SavedObject *>::iterator i = _objList.begin(); i != _objList.end(); ++i) {
-		serializer.validate((*i)->getClassName());
-		(*i)->synchronize(serializer);
+		SavedObject *so = *i;
+		serializer.validate(so->getClassName());
+		so->synchronize(serializer);
 	}
 
 	// Save file complete
@@ -289,7 +290,7 @@ void Saver::writeSavegameHeader(Common::OutSaveFile *out, tSageSavegameHeader &h
 	// Create a thumbnail and save it
 	Graphics::Surface *thumb = new Graphics::Surface();
 	Graphics::Surface s = g_globals->_screenSurface.lockSurface();
-	::createThumbnail(thumb, (const byte *)s.pixels, SCREEN_WIDTH, SCREEN_HEIGHT, thumbPalette);
+	::createThumbnail(thumb, (const byte *)s.getPixels(), SCREEN_WIDTH, SCREEN_HEIGHT, thumbPalette);
 	Graphics::saveThumbnail(*out, *thumb);
 	g_globals->_screenSurface.unlockSurface();
 	thumb->free();
